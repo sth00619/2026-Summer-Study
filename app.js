@@ -1,523 +1,929 @@
-// ===== STUDY HUB — Main App =====
-// All state stored in localStorage for persistence across sessions
+// ===== STUDY HUB — Application Logic =====
+// Sections: state, utils, particles, nav, dashboard (heatmap/skills/sessions),
+// library (filter+render+detail modal), projects (kanban+edit modal),
+// resources, journal, links, init.
 
-(function () {
-  "use strict";
+// =========================================================================
+// STATE — localStorage persistence
+// =========================================================================
+const STORAGE = {
+  sessions: "sh_sessions",   // [{id, date, topic, hours, note}]
+  projects: "sh_projects",   // user's projects (Kanban). See schema below
+  journal:  "sh_journal",    // [{id, date, title, body, tag, linkProject}]
+  links:    "sh_links",      // [{id, title, url, cat}]
+};
+// User project schema:
+// {
+//   id, title, category, status: "todo"|"progress"|"done",
+//   started_date, target_date, completed_date,  // ISO YYYY-MM-DD or null
+//   github_url, demo_url, notes,
+//   sourceLibraryId,  // if added from library
+//   shortDesc, techStack, difficulty            // copied from library
+// }
 
-  // ===== STATE =====
-  const STATE_KEY = "studyhub_state";
+const load = (k, d) => {
+  try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; }
+};
+const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STATE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) { /* ignore */ }
-    return null;
-  }
+let sessions = load(STORAGE.sessions, []);
+let projects = load(STORAGE.projects, []);
+let journal  = load(STORAGE.journal, []);
+let links    = load(STORAGE.links, DEFAULT_LINKS);
 
-  function saveState(state) {
-    localStorage.setItem(STATE_KEY, JSON.stringify(state));
-  }
+// First-time setup: seed default 4 projects if user has none
+if (projects.length === 0) {
+  projects = DEFAULT_PROJECTS.map(p => ({
+    id: p.id,
+    title: p.name,
+    category: p.field === "ml" ? "ml" : p.field === "sql" ? "da-bi" : p.field === "python" ? "ml" : "ml",
+    status: p.status,
+    started_date: null,
+    target_date: null,
+    completed_date: null,
+    github_url: "",
+    demo_url: "",
+    notes: "",
+    shortDesc: "",
+    techStack: [],
+    difficulty: "Beginner",
+  }));
+  save(STORAGE.projects, projects);
+}
 
-  let state = loadState() || {
-    sessions: [],       // { id, topic, hours, note, date }
-    journal: [],        // { id, title, body, tag, date }
-    links: [...DEFAULT_LINKS],
-    projects: [...DEFAULT_PROJECTS],
-    streak: 0,
-    lastStudyDate: null,
-  };
+// Current filter state
+let libCatFilter = "all";
+let libDiffFilter = "all";
+let resourceFilter = "all";
+let journalFilter = "all";
 
-  // ===== PARTICLES =====
-  function initParticles() {
-    const canvas = document.getElementById("particles");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let w, h, particles = [];
+// =========================================================================
+// UTILITIES
+// =========================================================================
+function uid(prefix = "x") {
+  return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+function toast(msg) {
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+function formatDateKR(iso) {
+  // "2026-06-28" -> "2026년 6월 28일"
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${y}년 ${m}월 ${d}일`;
+}
+function formatDateShort(iso) {
+  // "2026-06-28" -> "06.28"
+  if (!iso) return "";
+  return iso.slice(5).replace("-", ".");
+}
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
-    function resize() {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-    }
-    resize();
-    window.addEventListener("resize", resize);
-
-    for (let i = 0; i < 60; i++) {
+// =========================================================================
+// PARTICLE BACKGROUND
+// =========================================================================
+function initParticles() {
+  const canvas = document.getElementById("particles");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  let particles = [];
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    particles = [];
+    const count = Math.min(50, Math.floor((canvas.width * canvas.height) / 25000));
+    for (let i = 0; i < count; i++) {
       particles.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
         r: Math.random() * 1.5 + 0.5,
-        dx: (Math.random() - 0.5) * 0.3,
-        dy: (Math.random() - 0.5) * 0.3,
-        o: Math.random() * 0.5 + 0.1,
       });
     }
-
-    function draw() {
-      ctx.clearRect(0, 0, w, h);
-      particles.forEach((p) => {
-        p.x += p.dx;
-        p.y += p.dy;
-        if (p.x < 0) p.x = w;
-        if (p.x > w) p.x = 0;
-        if (p.y < 0) p.y = h;
-        if (p.y > h) p.y = 0;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(108,92,231,${p.o})`;
-        ctx.fill();
-      });
-
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(108,92,231,${0.06 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        }
-      }
-      requestAnimationFrame(draw);
-    }
-    draw();
   }
-
-  // ===== NAVIGATION =====
-  function initNav() {
-    const links = document.querySelectorAll(".nav-link");
-    const toggle = document.getElementById("navToggle");
-    const navLinks = document.getElementById("navLinks");
-
-    links.forEach((link) => {
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        const section = link.dataset.section;
-        links.forEach((l) => l.classList.remove("active"));
-        link.classList.add("active");
-
-        document.querySelectorAll(".section").forEach((s) => (s.style.display = "none"));
-        const target = document.getElementById(section);
-        if (target) target.style.display = "block";
-
-        navLinks.classList.remove("open");
-        window.scrollTo({ top: target.offsetTop - 80, behavior: "smooth" });
-      });
+  resize();
+  window.addEventListener("resize", resize);
+  function tick() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(108, 92, 231, 0.4)";
+      ctx.fill();
     });
+    requestAnimationFrame(tick);
+  }
+  tick();
+}
 
-    toggle.addEventListener("click", () => {
-      navLinks.classList.toggle("open");
+// =========================================================================
+// NAV
+// =========================================================================
+function initNav() {
+  const toggle = document.getElementById("navToggle");
+  const linksEl = document.getElementById("navLinks");
+  if (toggle) {
+    toggle.addEventListener("click", () => linksEl.classList.toggle("open"));
+  }
+  document.querySelectorAll(".nav-link").forEach(a => {
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      const target = a.dataset.section;
+      showSection(target);
+      document.querySelectorAll(".nav-link").forEach(x => x.classList.remove("active"));
+      a.classList.add("active");
+      linksEl.classList.remove("open");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
+  });
+}
+function showSection(id) {
+  document.querySelectorAll(".section").forEach(s => {
+    s.style.display = s.id === id ? "block" : "none";
+  });
+}
+
+// =========================================================================
+// DASHBOARD — Hero counters
+// =========================================================================
+function animateCounter(el, target, dur = 1200) {
+  if (!el) return;
+  const start = Date.now();
+  const startVal = 0;
+  function step() {
+    const elapsed = Date.now() - start;
+    const t = Math.min(elapsed / dur, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(startVal + (target - startVal) * eased);
+    if (t < 1) requestAnimationFrame(step);
   }
-
-  // ===== HERO STATS (Animated counter) =====
-  function animateCounter(el, target) {
-    let current = 0;
-    const step = Math.max(1, Math.ceil(target / 40));
-    const timer = setInterval(() => {
-      current += step;
-      if (current >= target) {
-        current = target;
-        clearInterval(timer);
-      }
-      el.textContent = current;
-    }, 30);
-  }
-
-  function updateHeroStats() {
-    const totalHours = state.sessions.reduce((s, x) => s + x.hours, 0);
-    animateCounter(document.getElementById("statResources"), RESOURCES.length);
-    animateCounter(document.getElementById("statHours"), Math.round(totalHours));
-    animateCounter(document.getElementById("statEntries"), state.journal.length);
-    animateCounter(document.getElementById("statStreak"), state.streak);
-  }
-
-  // ===== HEATMAP =====
-  function renderHeatmap() {
-    const container = document.getElementById("heatmap");
-    if (!container) return;
-    container.innerHTML = "";
-
-    const today = new Date();
-    const cells = 90; // last 90 days
-
-    for (let i = cells - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
-
-      const dayHours = state.sessions
-        .filter((s) => s.date === dateStr)
-        .reduce((sum, s) => sum + s.hours, 0);
-
-      let level = 0;
-      if (dayHours >= 4) level = 4;
-      else if (dayHours >= 3) level = 3;
-      else if (dayHours >= 2) level = 2;
-      else if (dayHours > 0) level = 1;
-
-      const cell = document.createElement("div");
-      cell.className = `hm-cell hm-${level}`;
-      cell.title = `${dateStr}: ${dayHours}h`;
-      container.appendChild(cell);
+  step();
+}
+function updateHeroStats() {
+  const totalHours = sessions.reduce((sum, s) => sum + Number(s.hours || 0), 0);
+  animateCounter(document.getElementById("statProjects"), PROJECT_LIBRARY.length);
+  animateCounter(document.getElementById("statHours"), Math.round(totalHours));
+  animateCounter(document.getElementById("statEntries"), journal.length);
+  animateCounter(document.getElementById("statStreak"), calcStreak());
+}
+function calcStreak() {
+  if (sessions.length === 0) return 0;
+  const dates = [...new Set(sessions.map(s => s.date))].sort().reverse();
+  let streak = 0;
+  let cursor = new Date(todayISO());
+  for (const d of dates) {
+    const isoCursor = cursor.toISOString().slice(0, 10);
+    if (d === isoCursor) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else if (d < isoCursor) {
+      break;
     }
   }
+  return streak;
+}
 
-  // ===== SKILL BARS =====
-  function renderSkillBars() {
-    const container = document.getElementById("skillBars");
-    if (!container) return;
-    container.innerHTML = "";
+// =========================================================================
+// HEATMAP
+// =========================================================================
+function renderHeatmap() {
+  const el = document.getElementById("heatmap");
+  if (!el) return;
+  const days = 84; // 12 weeks
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  const cells = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    const hours = sessions.filter(s => s.date === iso).reduce((sum, s) => sum + Number(s.hours || 0), 0);
+    let level = 0;
+    if (hours >= 4) level = 4;
+    else if (hours >= 3) level = 3;
+    else if (hours >= 2) level = 2;
+    else if (hours >= 1) level = 1;
+    cells.push(`<div class="hm-cell hm-${level}" title="${formatDateKR(iso)} · ${hours}h"></div>`);
+  }
+  el.innerHTML = cells.join("");
+  const rangeEl = document.getElementById("heatmapRange");
+  if (rangeEl) {
+    const startIso = new Date(end);
+    startIso.setDate(startIso.getDate() - (days - 1));
+    rangeEl.textContent = `${formatDateKR(startIso.toISOString().slice(0, 10))} — ${formatDateKR(end.toISOString().slice(0, 10))}`;
+  }
+}
 
-    const skills = [
-      { key: "python", label: "Python", color: "#00b894" },
-      { key: "sql", label: "SQL", color: "#0984e3" },
-      { key: "ml", label: "ML / DS", color: "#6c5ce7" },
-      { key: "tools", label: "Tools", color: "#fdcb6e" },
-      { key: "career", label: "Career", color: "#e17055" },
-    ];
+// =========================================================================
+// SKILL BARS
+// =========================================================================
+function renderSkillBars() {
+  const el = document.getElementById("skillBars");
+  if (!el) return;
+  const TOPICS = {
+    python:  { label: "Python",   color: "#00b894" },
+    sql:     { label: "SQL",      color: "#0984e3" },
+    ml:      { label: "ML / DS",  color: "#6c5ce7" },
+    tools:   { label: "Tools",    color: "#fdcb6e" },
+    career:  { label: "Career",   color: "#e17055" },
+    project: { label: "Project",  color: "#fd79a8" },
+    other:   { label: "Other",    color: "#a29bfe" },
+  };
+  const totals = {};
+  sessions.forEach(s => {
+    if (!s.topic) return;
+    totals[s.topic] = (totals[s.topic] || 0) + Number(s.hours || 0);
+  });
+  const maxHours = Math.max(...Object.values(totals), 10);
+  el.innerHTML = Object.entries(TOPICS).map(([key, info]) => {
+    const h = totals[key] || 0;
+    const pct = (h / maxHours) * 100;
+    return `
+      <div class="skill-row">
+        <span class="skill-label">${info.label}</span>
+        <div class="skill-track"><div class="skill-fill" style="width:0%;background:${info.color}"></div></div>
+        <span class="skill-hours">${h}h</span>
+      </div>`;
+  }).join("");
+  // animate
+  setTimeout(() => {
+    el.querySelectorAll(".skill-fill").forEach((bar, i) => {
+      const topic = Object.keys(TOPICS)[i];
+      const h = totals[topic] || 0;
+      const pct = (h / maxHours) * 100;
+      bar.style.width = pct + "%";
+    });
+  }, 100);
+}
 
-    const maxHours = Math.max(1, ...skills.map((s) => {
-      return state.sessions.filter((x) => x.topic === s.key).reduce((sum, x) => sum + x.hours, 0);
-    }));
+// =========================================================================
+// SESSION LOGGING
+// =========================================================================
+function logSession() {
+  const dateEl = document.getElementById("logDate");
+  const topicEl = document.getElementById("logTopic");
+  const hoursEl = document.getElementById("logHours");
+  const noteEl = document.getElementById("logNote");
+  const date = dateEl.value || todayISO();
+  const topic = topicEl.value;
+  const hours = parseFloat(hoursEl.value);
+  if (!topic) { toast("토픽을 선택하세요"); return; }
+  if (!hours || hours <= 0) { toast("학습 시간을 입력하세요"); return; }
+  sessions.push({
+    id: uid("s"),
+    date,
+    topic,
+    hours,
+    note: (noteEl.value || "").trim(),
+  });
+  save(STORAGE.sessions, sessions);
+  dateEl.value = "";
+  topicEl.value = "";
+  hoursEl.value = "";
+  noteEl.value = "";
+  toast(`기록됨 · ${formatDateKR(date)} · ${hours}h`);
+  renderHeatmap();
+  renderSkillBars();
+  renderRecentSessions();
+  updateHeroStats();
+}
 
-    skills.forEach((skill) => {
-      const hours = state.sessions.filter((x) => x.topic === skill.key).reduce((sum, x) => sum + x.hours, 0);
-      const pct = Math.min(100, (hours / Math.max(maxHours, 1)) * 100);
+function toggleRecentSessions() {
+  const el = document.getElementById("recentSessions");
+  const btn = document.getElementById("recentToggle");
+  if (!el) return;
+  if (el.style.display === "none") {
+    el.style.display = "block";
+    btn.textContent = "접기";
+    renderRecentSessions();
+  } else {
+    el.style.display = "none";
+    btn.textContent = "펼치기";
+  }
+}
+function renderRecentSessions() {
+  const el = document.getElementById("recentSessions");
+  if (!el || el.style.display === "none") return;
+  const TOPIC_LABELS = {
+    python: "Python", sql: "SQL", ml: "ML/DS", tools: "Tools",
+    career: "Career", project: "Project", other: "Other"
+  };
+  const list = [...sessions].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 20);
+  if (list.length === 0) {
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;">아직 학습 기록이 없습니다.</p>`;
+    return;
+  }
+  el.innerHTML = list.map(s => `
+    <div class="recent-item">
+      <span class="recent-date">${formatDateKR(s.date)}</span>
+      <span class="recent-topic">${TOPIC_LABELS[s.topic] || s.topic}</span>
+      <span style="flex:1;color:var(--text-dim);font-size:12px;margin-left:12px;">${escapeHtml(s.note || "")}</span>
+      <span class="recent-hours">${s.hours}h</span>
+      <button class="btn-ghost btn-sm" onclick="deleteSession('${s.id}')" title="삭제">✕</button>
+    </div>
+  `).join("");
+}
+function deleteSession(id) {
+  if (!confirm("이 기록을 삭제하시겠습니까?")) return;
+  sessions = sessions.filter(s => s.id !== id);
+  save(STORAGE.sessions, sessions);
+  renderHeatmap();
+  renderSkillBars();
+  renderRecentSessions();
+  updateHeroStats();
+  toast("삭제됨");
+}
 
-      const row = document.createElement("div");
-      row.className = "skill-row";
-      row.innerHTML = `
-        <span class="skill-label">${skill.label}</span>
-        <div class="skill-track">
-          <div class="skill-fill" style="background:${skill.color};" data-width="${pct}%"></div>
+// =========================================================================
+// PROJECT LIBRARY — Render grid + filters
+// =========================================================================
+function renderProjectLibrary() {
+  const el = document.getElementById("libraryGrid");
+  if (!el) return;
+  const filtered = PROJECT_LIBRARY.filter(p => {
+    if (libCatFilter !== "all" && p.category !== libCatFilter) return false;
+    if (libDiffFilter !== "all" && p.difficulty !== libDiffFilter) return false;
+    return true;
+  });
+  if (filtered.length === 0) {
+    el.innerHTML = `<p style="grid-column:1/-1;color:var(--text-muted);text-align:center;padding:2rem;">조건에 맞는 프로젝트가 없습니다.</p>`;
+    return;
+  }
+  el.innerHTML = filtered.map(p => {
+    const cat = PROJECT_CATEGORIES[p.category];
+    return `
+      <div class="lib-card" style="--lib-color:${cat.color}" onclick="showProjectDetail('${p.id}')">
+        <div class="lib-card-header">
+          <span class="lib-cat-badge">${cat.icon} ${cat.label.split(" · ")[0]}</span>
+          <span class="lib-diff diff-${p.difficulty}">${p.difficulty}</span>
         </div>
-        <span class="skill-hours">${hours}h</span>
-      `;
-      container.appendChild(row);
+        <h3 class="lib-title">${escapeHtml(p.title)}</h3>
+        <p class="lib-desc">${escapeHtml(p.shortDesc)}</p>
+        <div class="lib-meta">
+          <span class="lib-meta-item">⏱ ${p.estimatedHours}h</span>
+          <span class="lib-meta-item">🔧 ${p.techStack.length} tools</span>
+          <span class="lib-meta-item">📚 ${p.steps.length} steps</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
-      // Animate bar after render
-      requestAnimationFrame(() => {
-        const fill = row.querySelector(".skill-fill");
-        fill.style.width = pct + "%";
-      });
+function initLibraryFilters() {
+  document.querySelectorAll("[data-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-filter]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      libCatFilter = btn.dataset.filter;
+      renderProjectLibrary();
     });
+  });
+  document.querySelectorAll("[data-diff]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-diff]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      libDiffFilter = btn.dataset.diff;
+      renderProjectLibrary();
+    });
+  });
+}
+
+// =========================================================================
+// PROJECT DETAIL MODAL — from library
+// =========================================================================
+function showProjectDetail(libId) {
+  const p = PROJECT_LIBRARY.find(x => x.id === libId);
+  if (!p) return;
+  const cat = PROJECT_CATEGORIES[p.category];
+  const alreadyAdded = projects.some(up => up.sourceLibraryId === libId);
+
+  const html = `
+    <div class="detail-header">
+      <h2 class="detail-title">${escapeHtml(p.title)}</h2>
+      <div class="detail-badges">
+        <span class="lib-cat-badge">${cat.icon} ${escapeHtml(cat.label)}</span>
+        <span class="lib-diff diff-${p.difficulty}">${p.difficulty}</span>
+        <span class="lib-cat-badge">⏱ 예상 ${p.estimatedHours}시간</span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>프로젝트 설명</h4>
+      <p>${escapeHtml(p.longDesc)}</p>
+    </div>
+
+    <div class="detail-section highlight">
+      <h4>왜 이 프로젝트가 중요한가?</h4>
+      <p>${escapeHtml(p.whyItMatters)}</p>
+    </div>
+
+    <div class="detail-section">
+      <h4>기술 스택</h4>
+      <div class="tag-list">
+        ${p.techStack.map(t => `<span class="tag-item">${escapeHtml(t)}</span>`).join("")}
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>데이터셋</h4>
+      <ul class="resource-list">
+        ${p.datasets.map(d => `<li>· ${escapeHtml(d)}</li>`).join("")}
+      </ul>
+    </div>
+
+    <div class="detail-section">
+      <h4>핵심 스킬</h4>
+      <div class="tag-list">
+        ${p.skills.map(s => `<span class="tag-item">${escapeHtml(s)}</span>`).join("")}
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>구현 단계 (${p.steps.length}단계)</h4>
+      <div class="step-list">
+        ${p.steps.map(s => `
+          <div class="step-item">
+            <div class="step-title">${escapeHtml(s.title)}</div>
+            <div class="step-desc">${escapeHtml(s.desc)}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    ${p.resources && p.resources.length ? `
+      <div class="detail-section">
+        <h4>참고 자료</h4>
+        <ul class="resource-list">
+          ${p.resources.map(r => r.url
+            ? `<li>· <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.title)}</a></li>`
+            : `<li>· ${escapeHtml(r.title)}</li>`
+          ).join("")}
+        </ul>
+      </div>
+    ` : ""}
+
+    <div class="detail-section">
+      <h4>적합한 직무</h4>
+      <div class="tag-list">
+        ${p.forRole.map(r => `<span class="tag-item">${escapeHtml(r)}</span>`).join("")}
+      </div>
+    </div>
+
+    ${p.warning ? `
+      <div class="detail-section">
+        <div class="warning-box">⚠ ${escapeHtml(p.warning)}</div>
+      </div>
+    ` : ""}
+
+    ${p.sourceFromChats ? `
+      <div class="detail-section">
+        <h4>출처</h4>
+        <p style="font-size:12px;color:var(--text-muted);font-family:var(--mono);">${escapeHtml(p.sourceFromChats)}</p>
+      </div>
+    ` : ""}
+
+    <div class="detail-actions">
+      ${alreadyAdded
+        ? `<button class="btn" disabled>이미 추가됨</button>`
+        : `<button class="btn btn-primary" onclick="addProjectFromLibrary('${p.id}')">내 프로젝트로 추가</button>`}
+      <button class="btn" onclick="closeModal()">닫기</button>
+    </div>
+  `;
+  document.getElementById("modalContent").innerHTML = html;
+  openModal();
+}
+
+// =========================================================================
+// MODAL — open / close
+// =========================================================================
+function openModal() {
+  document.getElementById("modalBackdrop").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeModal() {
+  document.getElementById("modalBackdrop").classList.remove("open");
+  document.body.style.overflow = "";
+}
+function closeModalOnBackdrop(event) {
+  if (event.target.id === "modalBackdrop") closeModal();
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModal();
+});
+
+// =========================================================================
+// MY PROJECTS — add from library, custom, render
+// =========================================================================
+function addProjectFromLibrary(libId) {
+  const p = PROJECT_LIBRARY.find(x => x.id === libId);
+  if (!p) return;
+  if (projects.some(up => up.sourceLibraryId === libId)) {
+    toast("이미 추가된 프로젝트입니다");
+    return;
   }
+  projects.push({
+    id: uid("p"),
+    title: p.title,
+    category: p.category,
+    status: "todo",
+    started_date: null,
+    target_date: null,
+    completed_date: null,
+    github_url: "",
+    demo_url: "",
+    notes: "",
+    sourceLibraryId: p.id,
+    shortDesc: p.shortDesc,
+    techStack: p.techStack,
+    difficulty: p.difficulty,
+  });
+  save(STORAGE.projects, projects);
+  renderProjects();
+  toast(`'${p.title}' 추가됨`);
+  closeModal();
+}
 
-  // ===== LOG SESSION =====
-  window.logSession = function () {
-    const topic = document.getElementById("logTopic").value;
-    const hours = parseFloat(document.getElementById("logHours").value);
-    const note = document.getElementById("logNote").value.trim();
+function addCustomProject() {
+  const nameEl = document.getElementById("projName");
+  const fieldEl = document.getElementById("projField");
+  const title = nameEl.value.trim();
+  if (!title) { toast("프로젝트 이름을 입력하세요"); return; }
+  projects.push({
+    id: uid("p"),
+    title,
+    category: fieldEl.value,
+    status: "todo",
+    started_date: null,
+    target_date: null,
+    completed_date: null,
+    github_url: "",
+    demo_url: "",
+    notes: "",
+    sourceLibraryId: null,
+    shortDesc: "",
+    techStack: [],
+    difficulty: "Beginner",
+  });
+  save(STORAGE.projects, projects);
+  nameEl.value = "";
+  renderProjects();
+  toast("프로젝트 추가됨");
+}
 
-    if (!topic || !hours || hours <= 0) {
-      showToast("Please select a topic and enter hours");
+function renderProjects() {
+  const cols = { todo: [], progress: [], done: [] };
+  projects.forEach(p => {
+    if (cols[p.status]) cols[p.status].push(p);
+  });
+  ["todo", "progress", "done"].forEach(status => {
+    const target = document.getElementById("board" + status.charAt(0).toUpperCase() + status.slice(1));
+    const countEl = document.getElementById("count" + status.charAt(0).toUpperCase() + status.slice(1));
+    if (countEl) countEl.textContent = cols[status].length;
+    if (!target) return;
+    if (cols[status].length === 0) {
+      target.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:8px 4px;">비어 있음</p>`;
       return;
     }
-
-    const today = new Date().toISOString().slice(0, 10);
-
-    state.sessions.push({
-      id: "s" + Date.now(),
-      topic,
-      hours,
-      note,
-      date: today,
-    });
-
-    // Update streak
-    if (state.lastStudyDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yStr = yesterday.toISOString().slice(0, 10);
-
-      if (state.lastStudyDate === yStr) {
-        state.streak++;
-      } else {
-        state.streak = 1;
-      }
-      state.lastStudyDate = today;
-    }
-
-    saveState(state);
-    document.getElementById("logTopic").value = "";
-    document.getElementById("logHours").value = "";
-    document.getElementById("logNote").value = "";
-
-    renderHeatmap();
-    renderSkillBars();
-    updateHeroStats();
-    showToast(`Logged ${hours}h of ${topic}`);
-  };
-
-  // ===== RESOURCES =====
-  function renderResources(filter = "all") {
-    const grid = document.getElementById("resourceGrid");
-    if (!grid) return;
-    grid.innerHTML = "";
-
-    const filtered = filter === "all" ? RESOURCES : RESOURCES.filter((r) => r.field === filter);
-
-    filtered.forEach((r, i) => {
-      const card = document.createElement("div");
-      card.className = "resource-card reveal";
-      card.style.animationDelay = `${i * 0.05}s`;
-      card.innerHTML = `
-        <span class="resource-tag tag-${r.field}">${r.field.toUpperCase()} · ${r.type}</span>
-        <div class="resource-name">${r.name}</div>
-        <div class="resource-desc">${r.desc}</div>
-        ${r.link ? `<a href="${r.link}" target="_blank" rel="noopener" class="resource-link">${new URL(r.link).hostname}</a>` : ""}
-        <div class="resource-source">${r.src}</div>
-      `;
-      grid.appendChild(card);
-
-      // Intersection observer for reveal
-      requestAnimationFrame(() => card.classList.add("visible"));
-    });
-  }
-
-  function initFilters() {
-    document.querySelectorAll(".filter-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        renderResources(btn.dataset.filter);
-      });
-    });
-  }
-
-  // ===== PROJECTS (Kanban) =====
-  function renderProjects() {
-    const todo = document.getElementById("boardTodo");
-    const progress = document.getElementById("boardProgress");
-    const done = document.getElementById("boardDone");
-    if (!todo || !progress || !done) return;
-
-    todo.innerHTML = "";
-    progress.innerHTML = "";
-    done.innerHTML = "";
-
-    state.projects.forEach((p) => {
-      const item = document.createElement("div");
-      item.className = "board-item";
-
-      const nextStatus = p.status === "todo" ? "progress" : p.status === "progress" ? "done" : null;
-      const prevStatus = p.status === "done" ? "progress" : p.status === "progress" ? "todo" : null;
-
-      item.innerHTML = `
-        <span>
-          <span class="resource-tag tag-${p.field}" style="font-size:9px;margin-right:4px;">${p.field}</span>
-          ${p.name}
-        </span>
-        <span class="board-item-actions">
-          ${prevStatus ? `<button class="btn-ghost btn-sm" onclick="moveProject('${p.id}','${prevStatus}')" title="Move back">←</button>` : ""}
-          ${nextStatus ? `<button class="btn-ghost btn-sm" onclick="moveProject('${p.id}','${nextStatus}')" title="Move forward">→</button>` : ""}
-          <button class="btn-ghost btn-sm" onclick="deleteProject('${p.id}')" title="Delete">×</button>
-        </span>
-      `;
-
-      if (p.status === "todo") todo.appendChild(item);
-      else if (p.status === "progress") progress.appendChild(item);
-      else done.appendChild(item);
-    });
-  }
-
-  window.addProject = function () {
-    const name = document.getElementById("projName").value.trim();
-    const field = document.getElementById("projField").value;
-    if (!name) { showToast("Enter a project name"); return; }
-
-    state.projects.push({ id: "p" + Date.now(), name, field, status: "todo" });
-    saveState(state);
-    document.getElementById("projName").value = "";
-    renderProjects();
-    showToast(`Added: ${name}`);
-  };
-
-  window.moveProject = function (id, newStatus) {
-    const p = state.projects.find((x) => x.id === id);
-    if (p) {
-      p.status = newStatus;
-      saveState(state);
-      renderProjects();
-    }
-  };
-
-  window.deleteProject = function (id) {
-    state.projects = state.projects.filter((x) => x.id !== id);
-    saveState(state);
-    renderProjects();
-  };
-
-  // ===== JOURNAL =====
-  function renderJournal() {
-    const container = document.getElementById("journalEntries");
-    if (!container) return;
-    container.innerHTML = "";
-
-    const sorted = [...state.journal].sort((a, b) => b.date.localeCompare(a.date));
-
-    sorted.forEach((entry, i) => {
-      const div = document.createElement("div");
-      div.className = "journal-entry";
-      div.style.animationDelay = `${i * 0.08}s`;
-      div.innerHTML = `
-        <div class="journal-entry-header">
-          <span class="journal-entry-title">${entry.title}</span>
-          <span class="journal-entry-date">${formatDate(entry.date)}</span>
+    target.innerHTML = cols[status].map(p => {
+      const cat = PROJECT_CATEGORIES[p.category] || PROJECT_CATEGORIES.ml;
+      const dateInfo = p.status === "done" && p.completed_date
+        ? `완료: ${formatDateKR(p.completed_date)}`
+        : p.status === "progress" && p.started_date
+        ? `시작: ${formatDateKR(p.started_date)}`
+        : p.target_date
+        ? `목표: ${formatDateKR(p.target_date)}`
+        : "";
+      return `
+        <div class="board-item" onclick="showProjectEdit('${p.id}')">
+          <div class="board-item-title">${escapeHtml(p.title)}</div>
+          <div class="board-item-meta">
+            <span class="board-item-tag" style="color:${cat.color}">${cat.icon} ${cat.label.split(" · ")[0]}</span>
+            <span style="font-size:10px;color:var(--text-muted);">${dateInfo}</span>
+          </div>
         </div>
-        <div class="journal-entry-body">${escapeHtml(entry.body)}</div>
-        <span class="journal-tag tag-${entry.tag}">${entry.tag.toUpperCase()}</span>
-        <button class="btn-ghost btn-sm" style="float:right;" onclick="deleteJournal('${entry.id}')">Delete</button>
       `;
-      container.appendChild(div);
-    });
-  }
+    }).join("");
+  });
+}
 
-  window.addJournalEntry = function () {
-    const title = document.getElementById("journalTitle").value.trim();
-    const body = document.getElementById("journalBody").value.trim();
-    const tag = document.getElementById("journalTag").value;
+// =========================================================================
+// PROJECT EDIT MODAL
+// =========================================================================
+function showProjectEdit(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  const html = `
+    <div class="detail-header">
+      <h2 class="detail-title">프로젝트 편집</h2>
+      ${p.sourceLibraryId ? `
+        <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+          Library 출처:
+          <a href="#" onclick="event.preventDefault();showProjectDetail('${p.sourceLibraryId}')">${escapeHtml(p.shortDesc || "원본 보기")}</a>
+        </p>
+      ` : ""}
+    </div>
 
-    if (!title || !body) { showToast("Fill in title and body"); return; }
+    <div class="edit-form">
+      <div class="edit-row">
+        <span class="edit-label">제목</span>
+        <input type="text" class="input" id="edit_title" value="${escapeHtml(p.title)}" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">카테고리</span>
+        <select class="input" id="edit_category">
+          ${Object.entries(PROJECT_CATEGORIES).map(([k, v]) =>
+            `<option value="${k}" ${p.category === k ? "selected" : ""}>${v.icon} ${v.label}</option>`
+          ).join("")}
+        </select>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">상태</span>
+        <select class="input" id="edit_status">
+          <option value="todo" ${p.status === "todo" ? "selected" : ""}>To do (예정)</option>
+          <option value="progress" ${p.status === "progress" ? "selected" : ""}>In progress (진행 중)</option>
+          <option value="done" ${p.status === "done" ? "selected" : ""}>Done (완료)</option>
+        </select>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">시작일</span>
+        <input type="date" class="input" id="edit_started" value="${p.started_date || ""}" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">목표일</span>
+        <input type="date" class="input" id="edit_target" value="${p.target_date || ""}" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">완료일</span>
+        <input type="date" class="input" id="edit_completed" value="${p.completed_date || ""}" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">GitHub URL</span>
+        <input type="url" class="input" id="edit_github" placeholder="https://github.com/..." value="${escapeHtml(p.github_url || "")}" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">Demo URL</span>
+        <input type="url" class="input" id="edit_demo" placeholder="배포 URL 또는 노트북 링크" value="${escapeHtml(p.demo_url || "")}" />
+      </div>
+      <div class="edit-row full">
+        <span class="edit-label">메모 / 진행 노트</span>
+        <textarea class="input textarea" id="edit_notes" placeholder="배운 점, 진행 상황, 다음 할 일 등 자유롭게">${escapeHtml(p.notes || "")}</textarea>
+      </div>
 
-    state.journal.push({
-      id: "j" + Date.now(),
-      title,
-      body,
-      tag,
-      date: new Date().toISOString(),
-    });
-    saveState(state);
-    document.getElementById("journalTitle").value = "";
-    document.getElementById("journalBody").value = "";
-    renderJournal();
-    updateHeroStats();
-    showToast("Journal entry saved");
-  };
-
-  window.deleteJournal = function (id) {
-    state.journal = state.journal.filter((x) => x.id !== id);
-    saveState(state);
-    renderJournal();
-    updateHeroStats();
-  };
-
-  // ===== LINKS =====
-  function renderLinks() {
-    const grid = document.getElementById("linkGrid");
-    if (!grid) return;
-    grid.innerHTML = "";
-
-    const iconMap = {
-      study: { icon: "📚", cls: "link-icon-study" },
-      tool: { icon: "🛠", cls: "link-icon-tool" },
-      repo: { icon: "📂", cls: "link-icon-repo" },
-      article: { icon: "📄", cls: "link-icon-article" },
-      video: { icon: "🎬", cls: "link-icon-video" },
-    };
-
-    state.links.forEach((link) => {
-      const info = iconMap[link.cat] || iconMap.study;
-      const div = document.createElement("div");
-      div.className = "link-item";
-      div.onclick = (e) => {
-        if (!e.target.classList.contains("link-delete")) {
-          window.open(link.url, "_blank");
-        }
-      };
-      div.innerHTML = `
-        <div class="link-icon ${info.cls}">${info.icon}</div>
-        <div class="link-info">
-          <div class="link-title">${escapeHtml(link.title)}</div>
-          <div class="link-url">${link.url}</div>
+      ${p.techStack && p.techStack.length ? `
+        <div class="detail-section" style="margin:0;">
+          <h4>기술 스택 (라이브러리 출처)</h4>
+          <div class="tag-list">
+            ${p.techStack.map(t => `<span class="tag-item">${escapeHtml(t)}</span>`).join("")}
+          </div>
         </div>
-        <button class="link-delete" onclick="event.stopPropagation();deleteLink('${link.id}')">×</button>
-      `;
-      grid.appendChild(div);
+      ` : ""}
+    </div>
+
+    <div class="detail-actions">
+      <button class="btn btn-primary" onclick="saveProjectEdit('${p.id}')">저장</button>
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn btn-danger" onclick="deleteProject('${p.id}')" style="margin-left:auto;">삭제</button>
+    </div>
+  `;
+  document.getElementById("modalContent").innerHTML = html;
+  openModal();
+}
+
+function saveProjectEdit(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  const newStatus = document.getElementById("edit_status").value;
+  const newCompleted = document.getElementById("edit_completed").value || null;
+  // Auto-set completed_date when moving to Done if blank
+  let finalCompleted = newCompleted;
+  if (newStatus === "done" && !newCompleted && p.status !== "done") {
+    finalCompleted = todayISO();
+  }
+  // Auto-set started_date when moving to In progress if blank
+  let finalStarted = document.getElementById("edit_started").value || null;
+  if (newStatus === "progress" && !finalStarted && p.status === "todo") {
+    finalStarted = todayISO();
+  }
+  Object.assign(p, {
+    title: document.getElementById("edit_title").value.trim() || p.title,
+    category: document.getElementById("edit_category").value,
+    status: newStatus,
+    started_date: finalStarted,
+    target_date: document.getElementById("edit_target").value || null,
+    completed_date: finalCompleted,
+    github_url: document.getElementById("edit_github").value.trim(),
+    demo_url: document.getElementById("edit_demo").value.trim(),
+    notes: document.getElementById("edit_notes").value.trim(),
+  });
+  save(STORAGE.projects, projects);
+  renderProjects();
+  closeModal();
+  toast("저장됨");
+}
+
+function deleteProject(projectId) {
+  if (!confirm("이 프로젝트를 삭제하시겠습니까? 이 동작은 되돌릴 수 없습니다.")) return;
+  projects = projects.filter(x => x.id !== projectId);
+  save(STORAGE.projects, projects);
+  renderProjects();
+  closeModal();
+  toast("삭제됨");
+}
+
+// =========================================================================
+// RESOURCES
+// =========================================================================
+function renderResources() {
+  const el = document.getElementById("resourceGrid");
+  if (!el) return;
+  const filtered = resourceFilter === "all"
+    ? RESOURCES
+    : RESOURCES.filter(r => r.field === resourceFilter);
+  el.innerHTML = filtered.map(r => `
+    <div class="resource-card">
+      <span class="resource-tag tag-${r.field}">${r.type}</span>
+      <h3 class="resource-name">${escapeHtml(r.name)}</h3>
+      <p class="resource-desc">${escapeHtml(r.desc)}</p>
+      ${r.link ? `<a href="${escapeHtml(r.link)}" target="_blank" rel="noopener" class="resource-link">${escapeHtml(r.link)}</a>` : ""}
+      <p class="resource-source">${escapeHtml(r.src || "")}</p>
+    </div>
+  `).join("");
+}
+function initResourceFilters() {
+  document.querySelectorAll("[data-resource-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-resource-filter]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      resourceFilter = btn.dataset.resourceFilter;
+      renderResources();
     });
-  }
+  });
+}
 
-  window.addLink = function () {
-    const title = document.getElementById("linkTitle").value.trim();
-    const url = document.getElementById("linkUrl").value.trim();
-    const cat = document.getElementById("linkCat").value;
-    if (!title || !url) { showToast("Fill in label and URL"); return; }
-
-    state.links.push({ id: "l" + Date.now(), title, url, cat });
-    saveState(state);
-    document.getElementById("linkTitle").value = "";
-    document.getElementById("linkUrl").value = "";
-    renderLinks();
-    showToast("Link saved");
+// =========================================================================
+// JOURNAL
+// =========================================================================
+function addJournalEntry() {
+  const dateEl = document.getElementById("journalDate");
+  const titleEl = document.getElementById("journalTitle");
+  const bodyEl = document.getElementById("journalBody");
+  const tagEl = document.getElementById("journalTag");
+  const linkEl = document.getElementById("journalLinkProject");
+  const title = titleEl.value.trim();
+  const body = bodyEl.value.trim();
+  if (!title) { toast("제목을 입력하세요"); return; }
+  if (!body) { toast("내용을 입력하세요"); return; }
+  journal.push({
+    id: uid("j"),
+    date: dateEl.value || todayISO(),
+    title,
+    body,
+    tag: tagEl.value,
+    linkProject: (linkEl.value || "").trim(),
+  });
+  save(STORAGE.journal, journal);
+  dateEl.value = "";
+  titleEl.value = "";
+  bodyEl.value = "";
+  linkEl.value = "";
+  renderJournal();
+  updateHeroStats();
+  toast("일지 저장됨");
+}
+function deleteJournal(id) {
+  if (!confirm("이 일지를 삭제하시겠습니까?")) return;
+  journal = journal.filter(j => j.id !== id);
+  save(STORAGE.journal, journal);
+  renderJournal();
+  updateHeroStats();
+  toast("삭제됨");
+}
+function renderJournal() {
+  const el = document.getElementById("journalEntries");
+  if (!el) return;
+  const TAGS = {
+    til: "TIL", breakthrough: "Breakthrough", struggle: "Struggle",
+    idea: "Idea", review: "Review"
   };
-
-  window.deleteLink = function (id) {
-    state.links = state.links.filter((x) => x.id !== id);
-    saveState(state);
-    renderLinks();
-  };
-
-  // ===== UTILS =====
-  function showToast(msg) {
-    const existing = document.querySelector(".toast");
-    if (existing) existing.remove();
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.textContent = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2500);
+  const filtered = journalFilter === "all"
+    ? journal
+    : journal.filter(j => j.tag === journalFilter);
+  const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  if (sorted.length === 0) {
+    el.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:2rem;">일지가 없습니다.</p>`;
+    return;
   }
+  el.innerHTML = sorted.map(j => `
+    <div class="journal-entry">
+      <div class="journal-entry-header">
+        <h4 class="journal-entry-title">${escapeHtml(j.title)}</h4>
+        <span class="journal-entry-date">${formatDateKR(j.date)}</span>
+      </div>
+      <div class="journal-entry-body">${escapeHtml(j.body)}</div>
+      <div class="journal-meta-row">
+        <span class="journal-tag tag-${j.tag}">${TAGS[j.tag] || j.tag}</span>
+        ${j.linkProject ? `<span class="journal-project-link">🔗 ${escapeHtml(j.linkProject)}</span>` : ""}
+        <button class="btn-ghost btn-sm" style="margin-left:auto;" onclick="deleteJournal('${j.id}')">삭제</button>
+      </div>
+    </div>
+  `).join("");
+}
+function initJournalFilters() {
+  document.querySelectorAll("[data-journal-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-journal-filter]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      journalFilter = btn.dataset.journalFilter;
+      renderJournal();
+    });
+  });
+}
 
-  function formatDate(iso) {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
+// =========================================================================
+// LINKS
+// =========================================================================
+function addLink() {
+  const titleEl = document.getElementById("linkTitle");
+  const urlEl = document.getElementById("linkUrl");
+  const catEl = document.getElementById("linkCat");
+  const title = titleEl.value.trim();
+  const url = urlEl.value.trim();
+  if (!title || !url) { toast("제목과 URL을 모두 입력하세요"); return; }
+  links.push({ id: uid("l"), title, url, cat: catEl.value });
+  save(STORAGE.links, links);
+  titleEl.value = "";
+  urlEl.value = "";
+  renderLinks();
+  toast("링크 저장됨");
+}
+function deleteLink(id) {
+  links = links.filter(l => l.id !== id);
+  save(STORAGE.links, links);
+  renderLinks();
+}
+function renderLinks() {
+  const el = document.getElementById("linkGrid");
+  if (!el) return;
+  const ICONS = { study: "📚", tool: "🔧", repo: "📦", article: "📰", video: "▶" };
+  el.innerHTML = links.map(l => `
+    <div class="link-item" onclick="window.open('${escapeHtml(l.url)}', '_blank')">
+      <div class="link-icon link-icon-${l.cat}">${ICONS[l.cat] || "🔗"}</div>
+      <div class="link-info">
+        <div class="link-title">${escapeHtml(l.title)}</div>
+        <div class="link-url">${escapeHtml(l.url)}</div>
+      </div>
+      <button class="link-delete" onclick="event.stopPropagation();deleteLink('${l.id}')" title="삭제">✕</button>
+    </div>
+  `).join("");
+}
 
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
+// =========================================================================
+// INIT
+// =========================================================================
+function init() {
+  initParticles();
+  initNav();
+  showSection("dashboard");
 
-  // ===== SCROLL REVEAL =====
-  function initScrollReveal() {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) e.target.classList.add("visible");
-        });
-      },
-      { threshold: 0.1 }
-    );
-    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
-  }
+  // Set today's date as default for date inputs
+  const today = todayISO();
+  const logDate = document.getElementById("logDate");
+  const journalDate = document.getElementById("journalDate");
+  if (logDate) logDate.value = today;
+  if (journalDate) journalDate.value = today;
 
-  // ===== INIT =====
-  function init() {
-    initParticles();
-    initNav();
-    updateHeroStats();
-    renderHeatmap();
-    renderSkillBars();
-    renderResources();
-    initFilters();
-    renderProjects();
-    renderJournal();
-    renderLinks();
+  renderHeatmap();
+  renderSkillBars();
+  renderProjectLibrary();
+  initLibraryFilters();
+  renderProjects();
+  renderResources();
+  initResourceFilters();
+  renderJournal();
+  initJournalFilters();
+  renderLinks();
+  updateHeroStats();
+}
 
-    setTimeout(initScrollReveal, 500);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
+document.addEventListener("DOMContentLoaded", init);
