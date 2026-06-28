@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Hub — 2026 Summer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Floating particles background -->
+  <canvas id="particles"></canvas>
+
+  <!-- Navigation -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <span class="logo-icon">◆</span>
+        <span>Study Hub</span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="#dashboard" class="nav-link active" data-section="dashboard">Dashboard</a>
+        <a href="#resources" class="nav-link" data-section="resources">Resources</a>
+        <a href="#projects" class="nav-link" data-section="projects">Projects</a>
+        <a href="#journal" class="nav-link" data-section="journal">Journal</a>
+        <a href="#links" class="nav-link" data-section="links">Links</a>
+      </div>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero" id="hero">
+    <div class="hero-content">
+      <p class="hero-eyebrow">2026 Summer Intensive</p>
+      <h1 class="hero-title">
+        <span class="hero-line">Learn.</span>
+        <span class="hero-line">Build.</span>
+        <span class="hero-line accent">Ship.</span>
+      </h1>
+      <p class="hero-desc">Python · SQL · Machine Learning · Portfolio</p>
+      <div class="hero-stats" id="heroStats">
+        <div class="stat-card">
+          <span class="stat-num" id="statResources">0</span>
+          <span class="stat-label">Resources</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="statHours">0</span>
+          <span class="stat-label">Hours logged</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="statEntries">0</span>
+          <span class="stat-label">Journal entries</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="statStreak">0</span>
+          <span class="stat-label">Day streak</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ===== DASHBOARD ===== -->
+    <section class="section" id="dashboard">
+      <div class="section-header">
+        <h2>Dashboard</h2>
+        <p class="section-desc">Your learning at a glance</p>
+      </div>
+
+      <!-- Weekly heatmap -->
+      <div class="card card-wide">
+        <h3 class="card-title">Study heatmap</h3>
+        <div class="heatmap" id="heatmap"></div>
+        <p class="heatmap-legend"><span class="hm-box hm-0"></span> 0h <span class="hm-box hm-1"></span> 1h <span class="hm-box hm-2"></span> 2h <span class="hm-box hm-3"></span> 3h <span class="hm-box hm-4"></span> 4h+</p>
+      </div>
+
+      <!-- Quick log -->
+      <div class="card card-wide">
+        <h3 class="card-title">Log study session</h3>
+        <div class="log-form">
+          <select id="logTopic" class="input">
+            <option value="">Select topic…</option>
+            <option value="python">Python</option>
+            <option value="sql">SQL</option>
+            <option value="ml">Machine Learning</option>
+            <option value="tools">Tools / DevOps</option>
+            <option value="career">Career Prep</option>
+            <option value="other">Other</option>
+          </select>
+          <input type="number" id="logHours" class="input" placeholder="Hours" min="0.5" max="16" step="0.5" />
+          <input type="text" id="logNote" class="input input-wide" placeholder="What did you study? (optional)" />
+          <button class="btn btn-primary" onclick="logSession()">Log</button>
+        </div>
+      </div>
+
+      <!-- Skill progress bars -->
+      <div class="card card-wide">
+        <h3 class="card-title">Skill progress</h3>
+        <div id="skillBars"></div>
+      </div>
+    </section>
+
+    <!-- ===== RESOURCES ===== -->
+    <section class="section" id="resources" style="display:none;">
+      <div class="section-header">
+        <h2>Resources</h2>
+        <p class="section-desc">Curated from 56 saved references</p>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="sql">SQL</button>
+        <button class="filter-btn" data-filter="python">Python</button>
+        <button class="filter-btn" data-filter="ml">ML / DS</button>
+        <button class="filter-btn" data-filter="tools">Tools</button>
+        <button class="filter-btn" data-filter="career">Career</button>
+      </div>
+
+      <div class="resource-grid" id="resourceGrid"></div>
+    </section>
+
+    <!-- ===== PROJECTS ===== -->
+    <section class="section" id="projects" style="display:none;">
+      <div class="section-header">
+        <h2>Projects</h2>
+        <p class="section-desc">Track your portfolio builds</p>
+      </div>
+
+      <div class="project-board" id="projectBoard">
+        <div class="board-col">
+          <h3 class="board-col-title"><span class="dot dot-todo"></span> To do</h3>
+          <div class="board-items" id="boardTodo"></div>
+        </div>
+        <div class="board-col">
+          <h3 class="board-col-title"><span class="dot dot-progress"></span> In progress</h3>
+          <div class="board-items" id="boardProgress"></div>
+        </div>
+        <div class="board-col">
+          <h3 class="board-col-title"><span class="dot dot-done"></span> Done</h3>
+          <div class="board-items" id="boardDone"></div>
+        </div>
+      </div>
+
+      <div class="card card-wide" style="margin-top:1.5rem;">
+        <h3 class="card-title">Add project</h3>
+        <div class="log-form">
+          <input type="text" id="projName" class="input input-wide" placeholder="Project name" />
+          <select id="projField" class="input">
+            <option value="python">Python</option>
+            <option value="sql">SQL</option>
+            <option value="ml">ML</option>
+            <option value="tools">Tools</option>
+          </select>
+          <button class="btn btn-primary" onclick="addProject()">Add</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== JOURNAL ===== -->
+    <section class="section" id="journal" style="display:none;">
+      <div class="section-header">
+        <h2>Learning journal</h2>
+        <p class="section-desc">What you learned, thoughts, breakthroughs</p>
+      </div>
+
+      <div class="card card-wide">
+        <h3 class="card-title">New entry</h3>
+        <div class="journal-form">
+          <input type="text" id="journalTitle" class="input input-wide" placeholder="Title — e.g. 'Finally understood JOIN types'" />
+          <textarea id="journalBody" class="input textarea" placeholder="Write your thoughts, what you learned, code snippets, anything…"></textarea>
+          <div class="journal-form-row">
+            <select id="journalTag" class="input">
+              <option value="til">TIL (Today I Learned)</option>
+              <option value="breakthrough">Breakthrough</option>
+              <option value="struggle">Struggle / Blocker</option>
+              <option value="idea">Idea</option>
+              <option value="review">Review / Recap</option>
+            </select>
+            <button class="btn btn-primary" onclick="addJournalEntry()">Save entry</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="journalEntries"></div>
+    </section>
+
+    <!-- ===== LINKS ===== -->
+    <section class="section" id="links" style="display:none;">
+      <div class="section-header">
+        <h2>Quick links</h2>
+        <p class="section-desc">Your bookmarked resources and tools</p>
+      </div>
+
+      <div class="card card-wide">
+        <h3 class="card-title">Add link</h3>
+        <div class="log-form">
+          <input type="text" id="linkTitle" class="input" placeholder="Label" />
+          <input type="url" id="linkUrl" class="input input-wide" placeholder="https://..." />
+          <select id="linkCat" class="input">
+            <option value="study">Study</option>
+            <option value="tool">Tool</option>
+            <option value="repo">Repository</option>
+            <option value="article">Article</option>
+            <option value="video">Video</option>
+          </select>
+          <button class="btn btn-primary" onclick="addLink()">Save</button>
+        </div>
+      </div>
+
+      <div class="link-grid" id="linkGrid"></div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Built for learning · <a href="https://github.com/sth00619/2026-Summer-Study" target="_blank" rel="noopener">GitHub</a></p>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
