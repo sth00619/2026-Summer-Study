@@ -3,27 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Study Hub — 2026 Summer</title>
+  <title>The SONG Files · Case Subject Portfolio</title>
+  <meta name="description" content="Data Analyst / Data Scientist portfolio — finance, transit, tourism, BI, AI engineering. A case-file styled body of work." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,30..100,0..1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <canvas id="particles"></canvas>
 
   <!-- ===== Navigation ===== -->
   <nav class="nav" id="nav">
     <div class="nav-inner">
-      <a href="#" class="nav-logo">
-        <span class="logo-icon">◆</span>
-        <span>Study Hub</span>
+      <a href="#" class="nav-logo" onclick="goHome(event)">
+        <span class="nav-logo-mark">The SONG Files</span>
+        <span class="nav-logo-no">CASE 000</span>
       </a>
       <div class="nav-links" id="navLinks">
-        <a href="#dashboard" class="nav-link active" data-section="dashboard">Dashboard</a>
-        <a href="#library" class="nav-link" data-section="library">Project Library</a>
-        <a href="#myprojects" class="nav-link" data-section="myprojects">My Projects</a>
-        <a href="#resources" class="nav-link" data-section="resources">Resources</a>
+        <a href="#home" class="nav-link active" data-section="home">Home</a>
+        <a href="#library" class="nav-link" data-section="library">Files</a>
+        <a href="#myprojects" class="nav-link" data-section="myprojects">Active</a>
+        <a href="#dashboard" class="nav-link" data-section="dashboard">Log</a>
+        <a href="#resources" class="nav-link" data-section="resources">Refs</a>
         <a href="#journal" class="nav-link" data-section="journal">Journal</a>
         <a href="#links" class="nav-link" data-section="links">Links</a>
       </div>
@@ -33,50 +34,235 @@
     </div>
   </nav>
 
-  <!-- ===== Hero ===== -->
-  <header class="hero" id="hero">
-    <div class="hero-content">
-      <p class="hero-eyebrow">2026 Summer Intensive</p>
-      <h1 class="hero-title">
-        <span class="hero-line">Learn.</span>
-        <span class="hero-line">Build.</span>
-        <span class="hero-line accent">Ship.</span>
-      </h1>
-      <p class="hero-desc">Python · SQL · Machine Learning · Data Analysis · AI Engineering</p>
-      <div class="hero-stats">
-        <div class="stat-card">
-          <span class="stat-num" id="statProjects">0</span>
-          <span class="stat-label">Project Library</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-num" id="statHours">0</span>
-          <span class="stat-label">Hours logged</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-num" id="statEntries">0</span>
-          <span class="stat-label">Journal entries</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-num" id="statStreak">0</span>
-          <span class="stat-label">Day streak</span>
-        </div>
-      </div>
-    </div>
-  </header>
-
   <main class="main">
 
     <!-- ============================================================ -->
-    <!-- DASHBOARD                                                    -->
+    <!-- HOME — Case File No. 000 (subject)                           -->
     <!-- ============================================================ -->
-    <section class="section" id="dashboard">
-      <div class="section-header">
-        <h2>Dashboard</h2>
-        <p class="section-desc">학습 현황 한눈에 보기</p>
+    <section class="section" id="home">
+      <div class="home-hero">
+
+        <!-- File header strip -->
+        <div class="file-header">
+          <span class="file-header-no">FILE No. 000</span>
+          <span class="file-header-name">CASE SUBJECT · PORTFOLIO DOSSIER</span>
+          <span class="file-header-stamp" id="fileDate"></span>
+        </div>
+
+        <!-- Subject name block -->
+        <div class="home-name-block">
+          <div class="home-name-mark">
+            <h1 class="home-name" id="profileName">SONG</h1>
+            <span class="home-name-kr" id="profileNameKr">송</span>
+          </div>
+          <div class="home-title">
+            <span id="profileTitle">Data Analyst · ML Practitioner</span>
+            <span class="home-title-kr" id="profileTitleKr">데이터 분석가 · ML 실무자 지망</span>
+          </div>
+        </div>
+
+        <!-- Dossier metadata grid -->
+        <div class="dossier-grid">
+          <div class="dossier-row">
+            <span class="dossier-row-label">Status</span>
+            <span class="dossier-row-value">
+              <span class="status-pip">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="profileStatus">Open to opportunities</span>
+              </span>
+            </span>
+          </div>
+          <div class="dossier-row">
+            <span class="dossier-row-label">Location</span>
+            <span class="dossier-row-value" id="profileLocation">Hwado, Gyeonggi-do, KR</span>
+          </div>
+          <div class="dossier-row">
+            <span class="dossier-row-label">Languages</span>
+            <span class="dossier-row-value" id="profileLanguages">Korean · English</span>
+          </div>
+          <div class="dossier-row">
+            <span class="dossier-row-label">Repository</span>
+            <span class="dossier-row-value"><a href="https://github.com/sth00619/2026-Summer-Study" target="_blank" rel="noopener">github.com/sth00619</a></span>
+          </div>
+        </div>
+
+        <!-- Case summary -->
+        <div class="case-summary" id="caseSummary"></div>
+
+        <!-- Focus areas -->
+        <div class="focus-areas" id="focusAreas"></div>
+
+        <!-- Actions -->
+        <div class="profile-actions">
+          <button class="btn" onclick="editProfile()">Edit Subject Profile</button>
+          <a href="#myprojects" class="btn btn-primary" onclick="event.preventDefault();navigateTo('myprojects')">View Active Cases</a>
+        </div>
       </div>
 
-      <div class="card card-wide">
-        <h3 class="card-title">학습 히트맵 <span class="card-sub" id="heatmapRange"></span></h3>
+      <!-- Quick action stats bar -->
+      <div class="quick-actions">
+        <div class="qa-item" onclick="navigateTo('library')">
+          <div class="qa-num" id="qaLibCount">0</div>
+          <div class="qa-label">Case Files Available</div>
+        </div>
+        <div class="qa-item" onclick="navigateTo('myprojects')">
+          <div class="qa-num" id="qaProjCount">0</div>
+          <div class="qa-label">Active Investigations</div>
+        </div>
+        <div class="qa-item" onclick="navigateTo('dashboard')">
+          <div class="qa-num" id="qaHoursCount">0</div>
+          <div class="qa-label">Hours Logged</div>
+        </div>
+        <div class="qa-item" onclick="navigateTo('journal')">
+          <div class="qa-num" id="qaJournalCount">0</div>
+          <div class="qa-label">Field Notes</div>
+        </div>
+      </div>
+
+      <!-- Featured Cases -->
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ Sec. 01</span>
+        <span class="label">Featured cases</span>
+      </div>
+      <h2 class="section-title">Pinned for review</h2>
+      <p class="section-desc">사이트를 처음 방문한 HR 매니저가 가장 먼저 확인할 핵심 프로젝트들입니다. 활성 프로젝트 카드에서 별표(★)로 핀고정합니다.</p>
+      <div class="featured-grid" id="featuredGrid"></div>
+
+      <!-- Evidence Log -->
+      <div class="section-eyebrow" style="margin-top:4rem;">
+        <span class="label-red">⬢ Sec. 02</span>
+        <span class="label">Evidence log · 누적 학습</span>
+      </div>
+      <h2 class="section-title">Quantified effort</h2>
+      <p class="section-desc">스킬별 누적 학습 시간. Dashboard에서 매일 기록됩니다.</p>
+      <div class="evidence-grid" id="evidenceGrid"></div>
+
+      <!-- Education -->
+      <div class="section-eyebrow" style="margin-top:4rem;">
+        <span class="label-red">⬢ Sec. 03</span>
+        <span class="label">Education · 학력</span>
+      </div>
+      <h2 class="section-title">Academic record</h2>
+      <div class="timeline-list" id="educationList"></div>
+      <div style="margin-top:1.5rem;">
+        <button class="btn btn-sm" onclick="addEducation()">+ Add education</button>
+      </div>
+
+      <!-- Experience -->
+      <div class="section-eyebrow" style="margin-top:4rem;">
+        <span class="label-red">⬢ Sec. 04</span>
+        <span class="label">Experience · 경력</span>
+      </div>
+      <h2 class="section-title">Field operations</h2>
+      <div class="timeline-list" id="experienceList"></div>
+      <div style="margin-top:1.5rem;">
+        <button class="btn btn-sm" onclick="addExperience()">+ Add experience</button>
+      </div>
+
+      <!-- Contact -->
+      <div class="section-eyebrow" style="margin-top:4rem;">
+        <span class="label-red">⬢ Sec. 05</span>
+        <span class="label">Contact channels</span>
+      </div>
+      <h2 class="section-title">Get in touch</h2>
+      <div class="contact-grid" id="contactGrid"></div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- LIBRARY (Project Library = "Files")                          -->
+    <!-- ============================================================ -->
+    <section class="section" id="library" hidden>
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ FILES</span>
+        <span class="label">37 verified cases</span>
+      </div>
+      <h2 class="section-title">Case file library</h2>
+      <p class="section-desc">8개 카테고리에 걸친 37개의 검증된 프로젝트. 각 케이스는 단계별 구현 가이드, 데이터셋, 적합 직무를 포함합니다.</p>
+
+      <div class="filter-bar" id="libraryFilters">
+        <span class="filter-label">Category</span>
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="finance">Finance</button>
+        <button class="filter-btn" data-filter="transport">Transport</button>
+        <button class="filter-btn" data-filter="tourism">Tourism</button>
+        <button class="filter-btn" data-filter="da-bi">DA · BI</button>
+        <button class="filter-btn" data-filter="growth">Growth</button>
+        <button class="filter-btn" data-filter="ml">ML / DS</button>
+        <button class="filter-btn" data-filter="ai-eng">AI Eng</button>
+        <button class="filter-btn" data-filter="mcp-tools">MCP</button>
+      </div>
+
+      <div class="filter-bar">
+        <span class="filter-label">Difficulty</span>
+        <button class="filter-btn small active" data-diff="all">All</button>
+        <button class="filter-btn small" data-diff="Beginner">Beginner</button>
+        <button class="filter-btn small" data-diff="Intermediate">Intermediate</button>
+        <button class="filter-btn small" data-diff="Advanced">Advanced</button>
+      </div>
+
+      <div class="library-grid" id="libraryGrid"></div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- MY PROJECTS (Kanban = "Active Cases")                        -->
+    <!-- ============================================================ -->
+    <section class="section" id="myprojects" hidden>
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ ACTIVE</span>
+        <span class="label">Investigations under way</span>
+      </div>
+      <h2 class="section-title">Active cases</h2>
+      <p class="section-desc">진행 중인 프로젝트. 카드를 클릭하면 상태, 시작일, GitHub URL 등을 편집할 수 있습니다. 별표(★)로 Home에 노출할 Featured Cases를 지정합니다.</p>
+
+      <div class="project-board" id="projectBoard">
+        <div class="board-col">
+          <h3 class="board-col-title"><span class="dot dot-todo"></span> Pending <span class="count" id="countTodo">00</span></h3>
+          <div class="board-items" id="boardTodo"></div>
+        </div>
+        <div class="board-col">
+          <h3 class="board-col-title"><span class="dot dot-progress"></span> In progress <span class="count" id="countProgress">00</span></h3>
+          <div class="board-items" id="boardProgress"></div>
+        </div>
+        <div class="board-col">
+          <h3 class="board-col-title"><span class="dot dot-done"></span> Shipped <span class="count" id="countDone">00</span></h3>
+          <div class="board-items" id="boardDone"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:2rem;">
+        <h3 class="card-title">Custom case · 커스텀 프로젝트 추가</h3>
+        <div class="log-form">
+          <input type="text" id="projName" class="input input-wide" placeholder="프로젝트 이름" />
+          <select id="projField" class="input">
+            <option value="finance">Finance</option>
+            <option value="transport">Transport</option>
+            <option value="tourism">Tourism</option>
+            <option value="da-bi">DA · BI</option>
+            <option value="growth">Growth</option>
+            <option value="ml">ML / DS</option>
+            <option value="ai-eng">AI Eng</option>
+            <option value="mcp-tools">MCP</option>
+          </select>
+          <button class="btn btn-primary" onclick="addCustomProject()">Add</button>
+        </div>
+        <p class="hint">Library에서 "Open case file → Add to my cases"를 누르면 상세 정보가 자동으로 채워집니다.</p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- DASHBOARD (Learning Log)                                     -->
+    <!-- ============================================================ -->
+    <section class="section" id="dashboard" hidden>
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ LOG</span>
+        <span class="label">Daily activity</span>
+      </div>
+      <h2 class="section-title">Learning log</h2>
+      <p class="section-desc">학습 현황을 시각화합니다. 매일 짧게라도 기록하면 누적 효과가 커집니다.</p>
+
+      <div class="card">
+        <h3 class="card-title">Activity heatmap <span class="card-sub" id="heatmapRange"></span></h3>
         <div class="heatmap" id="heatmap"></div>
         <p class="heatmap-legend">
           <span class="hm-box hm-0"></span> 0h
@@ -87,12 +273,12 @@
         </p>
       </div>
 
-      <div class="card card-wide">
-        <h3 class="card-title">학습 세션 기록</h3>
+      <div class="card">
+        <h3 class="card-title">Log a session · 세션 기록</h3>
         <div class="log-form">
           <input type="date" id="logDate" class="input" title="날짜 선택" />
           <select id="logTopic" class="input">
-            <option value="">토픽 선택…</option>
+            <option value="">Topic…</option>
             <option value="python">Python</option>
             <option value="sql">SQL</option>
             <option value="ml">Machine Learning</option>
@@ -101,110 +287,36 @@
             <option value="project">Project Work</option>
             <option value="other">Other</option>
           </select>
-          <input type="number" id="logHours" class="input input-narrow" placeholder="시간" min="0.5" max="16" step="0.5" />
+          <input type="number" id="logHours" class="input input-narrow" placeholder="hours" min="0.5" max="16" step="0.5" />
           <input type="text" id="logNote" class="input input-wide" placeholder="무엇을 학습했나요? (선택)" />
-          <button class="btn btn-primary" onclick="logSession()">기록</button>
+          <button class="btn btn-primary" onclick="logSession()">Record</button>
         </div>
       </div>
 
-      <div class="card card-wide">
-        <h3 class="card-title">스킬별 누적 시간</h3>
+      <div class="card">
+        <h3 class="card-title">Cumulative hours by topic</h3>
         <div id="skillBars"></div>
       </div>
 
-      <div class="card card-wide">
-        <h3 class="card-title">최근 학습 기록 <button class="btn-ghost btn-sm" onclick="toggleRecentSessions()" id="recentToggle">펼치기</button></h3>
+      <div class="card">
+        <h3 class="card-title">Recent sessions <button class="btn-ghost btn-sm" onclick="toggleRecentSessions()" id="recentToggle">[ expand ]</button></h3>
         <div id="recentSessions" class="recent-list" style="display:none;"></div>
-      </div>
-    </section>
-
-    <!-- ============================================================ -->
-    <!-- PROJECT LIBRARY (NEW)                                        -->
-    <!-- ============================================================ -->
-    <section class="section" id="library" style="display:none;">
-      <div class="section-header">
-        <h2>Project Library</h2>
-        <p class="section-desc">37개 검증된 프로젝트. 카드를 클릭하면 구현 상세를 확인할 수 있어요.</p>
-      </div>
-
-      <div class="filter-bar" id="libraryFilters">
-        <button class="filter-btn active" data-filter="all">전체</button>
-        <button class="filter-btn" data-filter="finance">💹 금융</button>
-        <button class="filter-btn" data-filter="transport">🚇 교통</button>
-        <button class="filter-btn" data-filter="tourism">🗺️ 관광</button>
-        <button class="filter-btn" data-filter="da-bi">📊 DA · BI</button>
-        <button class="filter-btn" data-filter="growth">📈 Growth</button>
-        <button class="filter-btn" data-filter="ml">🤖 ML/DS</button>
-        <button class="filter-btn" data-filter="ai-eng">🧠 AI Eng</button>
-        <button class="filter-btn" data-filter="mcp-tools">🛠️ MCP</button>
-      </div>
-
-      <div class="filter-bar">
-        <span class="filter-label">난이도:</span>
-        <button class="filter-btn small active" data-diff="all">전체</button>
-        <button class="filter-btn small" data-diff="Beginner">초급</button>
-        <button class="filter-btn small" data-diff="Intermediate">중급</button>
-        <button class="filter-btn small" data-diff="Advanced">고급</button>
-      </div>
-
-      <div class="library-grid" id="libraryGrid"></div>
-    </section>
-
-    <!-- ============================================================ -->
-    <!-- MY PROJECTS (Kanban)                                         -->
-    <!-- ============================================================ -->
-    <section class="section" id="myprojects" style="display:none;">
-      <div class="section-header">
-        <h2>My Projects</h2>
-        <p class="section-desc">진행 중인 프로젝트. 카드를 클릭하면 편집할 수 있어요.</p>
-      </div>
-
-      <div class="project-board" id="projectBoard">
-        <div class="board-col">
-          <h3 class="board-col-title"><span class="dot dot-todo"></span> To do <span class="count" id="countTodo">0</span></h3>
-          <div class="board-items" id="boardTodo"></div>
-        </div>
-        <div class="board-col">
-          <h3 class="board-col-title"><span class="dot dot-progress"></span> In progress <span class="count" id="countProgress">0</span></h3>
-          <div class="board-items" id="boardProgress"></div>
-        </div>
-        <div class="board-col">
-          <h3 class="board-col-title"><span class="dot dot-done"></span> Done <span class="count" id="countDone">0</span></h3>
-          <div class="board-items" id="boardDone"></div>
-        </div>
-      </div>
-
-      <div class="card card-wide" style="margin-top:1.5rem;">
-        <h3 class="card-title">커스텀 프로젝트 추가</h3>
-        <div class="log-form">
-          <input type="text" id="projName" class="input input-wide" placeholder="프로젝트 이름" />
-          <select id="projField" class="input">
-            <option value="finance">금융</option>
-            <option value="transport">교통</option>
-            <option value="tourism">관광</option>
-            <option value="da-bi">DA/BI</option>
-            <option value="growth">Growth</option>
-            <option value="ml">ML</option>
-            <option value="ai-eng">AI Eng</option>
-            <option value="mcp-tools">MCP/Tools</option>
-          </select>
-          <button class="btn btn-primary" onclick="addCustomProject()">추가</button>
-        </div>
-        <p class="hint">💡 Project Library에서 '내 프로젝트로 추가' 버튼을 누르면 상세 정보가 자동으로 채워집니다.</p>
       </div>
     </section>
 
     <!-- ============================================================ -->
     <!-- RESOURCES                                                    -->
     <!-- ============================================================ -->
-    <section class="section" id="resources" style="display:none;">
-      <div class="section-header">
-        <h2>Resources</h2>
-        <p class="section-desc">56장 이미지에서 추출한 38개 학습 리소스</p>
+    <section class="section" id="resources" hidden>
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ REFS</span>
+        <span class="label">Recovered learning artifacts</span>
       </div>
+      <h2 class="section-title">References</h2>
+      <p class="section-desc">3개 채팅에 걸친 56장의 이미지 분석에서 추출된 38개 학습 리소스.</p>
 
       <div class="filter-bar">
-        <button class="filter-btn active" data-resource-filter="all">전체</button>
+        <button class="filter-btn active" data-resource-filter="all">All</button>
         <button class="filter-btn" data-resource-filter="sql">SQL</button>
         <button class="filter-btn" data-resource-filter="python">Python</button>
         <button class="filter-btn" data-resource-filter="ml">ML / DS</button>
@@ -218,14 +330,16 @@
     <!-- ============================================================ -->
     <!-- JOURNAL                                                      -->
     <!-- ============================================================ -->
-    <section class="section" id="journal" style="display:none;">
-      <div class="section-header">
-        <h2>Learning Journal</h2>
-        <p class="section-desc">학습한 내용, 깨달음, 막혔던 점을 기록하세요.</p>
+    <section class="section" id="journal" hidden>
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ JOURNAL</span>
+        <span class="label">Field notes</span>
       </div>
+      <h2 class="section-title">Learning journal</h2>
+      <p class="section-desc">학습한 내용, 깨달음, 막혔던 점을 기록하세요. 코호트별로 필터링됩니다.</p>
 
-      <div class="card card-wide">
-        <h3 class="card-title">새 일지 작성</h3>
+      <div class="card">
+        <h3 class="card-title">New entry · 새 일지</h3>
         <div class="journal-form">
           <div class="journal-form-row">
             <input type="date" id="journalDate" class="input" />
@@ -234,20 +348,20 @@
           <textarea id="journalBody" class="input textarea" placeholder="배운 점, 막혔던 점, 코드 스니펫, 생각 등 자유롭게…"></textarea>
           <div class="journal-form-row">
             <select id="journalTag" class="input">
-              <option value="til">TIL (Today I Learned)</option>
+              <option value="til">TIL — Today I Learned</option>
               <option value="breakthrough">Breakthrough</option>
-              <option value="struggle">Struggle / Blocker</option>
+              <option value="struggle">Struggle · Blocker</option>
               <option value="idea">Idea</option>
-              <option value="review">Review / Recap</option>
+              <option value="review">Review · Recap</option>
             </select>
             <input type="text" id="journalLinkProject" class="input" placeholder="연결 프로젝트 (선택)" />
-            <button class="btn btn-primary" onclick="addJournalEntry()">저장</button>
+            <button class="btn btn-primary" onclick="addJournalEntry()">Save</button>
           </div>
         </div>
       </div>
 
       <div class="filter-bar" style="margin-top:1.5rem;">
-        <button class="filter-btn active" data-journal-filter="all">전체</button>
+        <button class="filter-btn active" data-journal-filter="all">All</button>
         <button class="filter-btn" data-journal-filter="til">TIL</button>
         <button class="filter-btn" data-journal-filter="breakthrough">Breakthrough</button>
         <button class="filter-btn" data-journal-filter="struggle">Struggle</button>
@@ -261,25 +375,26 @@
     <!-- ============================================================ -->
     <!-- LINKS                                                        -->
     <!-- ============================================================ -->
-    <section class="section" id="links" style="display:none;">
-      <div class="section-header">
-        <h2>Quick Links</h2>
-        <p class="section-desc">자주 쓰는 리소스 북마크</p>
+    <section class="section" id="links" hidden>
+      <div class="section-eyebrow">
+        <span class="label-red">⬢ LINKS</span>
+        <span class="label">Bookmarks</span>
       </div>
+      <h2 class="section-title">Quick links</h2>
 
-      <div class="card card-wide">
-        <h3 class="card-title">링크 추가</h3>
+      <div class="card">
+        <h3 class="card-title">Add bookmark</h3>
         <div class="log-form">
-          <input type="text" id="linkTitle" class="input" placeholder="라벨" />
+          <input type="text" id="linkTitle" class="input" placeholder="Label" />
           <input type="url" id="linkUrl" class="input input-wide" placeholder="https://..." />
           <select id="linkCat" class="input">
-            <option value="study">학습</option>
-            <option value="tool">도구</option>
-            <option value="repo">레포</option>
-            <option value="article">아티클</option>
-            <option value="video">영상</option>
+            <option value="study">Study</option>
+            <option value="tool">Tool</option>
+            <option value="repo">Repo</option>
+            <option value="article">Article</option>
+            <option value="video">Video</option>
           </select>
-          <button class="btn btn-primary" onclick="addLink()">저장</button>
+          <button class="btn btn-primary" onclick="addLink()">Save</button>
         </div>
       </div>
 
@@ -289,17 +404,17 @@
   </main>
 
   <!-- ============================================================ -->
-  <!-- MODAL — Project Library Detail / My Project Edit              -->
+  <!-- MODAL                                                         -->
   <!-- ============================================================ -->
   <div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOnBackdrop(event)">
     <div class="modal" id="modal" role="dialog" aria-modal="true">
-      <button class="modal-close" onclick="closeModal()" aria-label="닫기">✕</button>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
       <div id="modalContent"></div>
     </div>
   </div>
 
   <footer class="footer">
-    <p>Built for learning · <a href="https://github.com/sth00619/2026-Summer-Study" target="_blank" rel="noopener">GitHub</a></p>
+    <p>The SONG Files · 2026 · Built for clarity, not decoration</p>
   </footer>
 
   <script src="data.js"></script>

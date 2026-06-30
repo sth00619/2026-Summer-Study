@@ -65,3 +65,41 @@ const DEFAULT_PROJECTS = [
   { id: "p3", name: "30-Days-Of-Python", field: "python", status: "todo" },
   { id: "p4", name: "RAG Pipeline", field: "ml", status: "todo" },
 ];
+
+// ===== PROFILE — case subject =====
+const DEFAULT_PROFILE = {
+  name: "SONG",
+  korean_name: "송",
+  title: "Data Analyst · ML Practitioner",
+  title_kr: "데이터 분석가 · ML 실무자 지망",
+  status: "open", // open | exploring | closed
+  status_label: "Open to opportunities",
+  status_label_kr: "신규 기회를 찾고 있습니다",
+  location: "Hwado, Gyeonggi-do, KR",
+  languages: ["Korean (Native)", "English (Professional)"],
+  summary_kr: "한국 시장의 금융·교통·관광 데이터를 활용한 ML/분석 포트폴리오를 구축하고 있습니다. KOSPI 종목 예측, 서울 대중교통 패턴 분석, 한국관광 TourAPI 활용 등 도메인 특화 프로젝트로 데이터 분석가/사이언티스트 직군을 준비하고 있습니다.",
+  summary_en: "Building a portfolio of data and ML projects grounded in Korean market data — finance, transit, tourism. Targeting Data Analyst / Data Scientist / Growth roles in fintech, mobility, and public sector.",
+  focus_areas: [
+    { label: "Finance · 금융",       category: "finance" },
+    { label: "Transport · 교통",     category: "transport" },
+    { label: "Tourism · 관광",       category: "tourism" },
+    { label: "BI · Tableau",         category: "da-bi" },
+    { label: "AI Engineering",       category: "ai-eng" },
+  ],
+  contact: {
+    email: "",
+    github: "https://github.com/sth00619",
+    linkedin: "",
+    blog: "",
+  },
+  resume_url: "",
+};
+
+const DEFAULT_EDUCATION = [
+  // { id, institution, degree, field, start, end, note }
+];
+
+const DEFAULT_EXPERIENCE = [
+  // { id, company, role, start, end, summary }
+];
+
